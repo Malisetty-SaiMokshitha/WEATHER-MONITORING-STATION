@@ -1,0 +1,94 @@
+import time
+import datetime
+import Adafruit_DHT
+import ds18b20Sensor
+import bmp180GetData
+
+# Define global variables
+timeString = ""
+humLab = 0
+tempExt = 0
+tempLab = 0
+presSL = 0
+altLab = 0
+presAbs = 0
+UV_mV = 0
+UV_index = 0
+
+# Define DHT22 sensor pin
+DHT22Sensor = 17
+DHTpin = 17
+
+# Define Thingspeak channel and MQTT protocol
+channelID = "YOUR CHANNEL ID"
+apiKey = "YOUR WRITE KEY"
+topic = "channels/" + channelID + "/publish/" + apiKey
+mqttHost = "mqtt.thingspeak.com"
+tTransport = "tcp"
+tPort = 1883
+tTLS = None
+
+# Function to get sensor data
+def getSensorData():
+    global timeString
+    global humLab
+    global tempExt
+    global tempLab
+    global presSL
+    global altLab
+    global presAbs
+    global UV_mV
+    global UV_index
+
+    now = datetime.datetime.now()
+    timeString = now.strftime("%Y-%m-%d %H:%M")
+
+    tempExt = round(ds18b20Sensor.get_temperature(), 1)
+
+    tempLab, presAbs, altLab, presSL = bmp180GetData(altReal)
+
+    humDHT, tempDHT = Adafruit_DHT.read_retry(DHT22Sensor, DHTpin)
+    if humDHT is not None and tempDHT is not None:
+        humLab = round(humDHT)
+
+    UV_mV = readSensorUV()
+    UV_index = indexCalculate(UV_mV)
+
+# Function to calculate UV index
+def indexCalculate(dataSensorUV):
+    if dataSensorUV < 227: indexUV = 0
+    elif (227 <= dataSensorUV) & (dataSensorUV < 318): indexUV = 1
+    elif (318 <= dataSensorUV) & (dataSensorUV < 408): indexUV = 2
+    elif (408 <= dataSensorUV) & (dataSensorUV < 503): indexUV = 3
+    elif (503 <= dataSensorUV) & (dataSensorUV < 606): indexUV = 4
+    elif (606 <= dataSensorUV) & (dataSensorUV < 696): indexUV = 5
+    elif (696 <= dataSensorUV) & (dataSensorUV < 795): indexUV = 6
+    elif (795 <= dataSensorUV) & (dataSensorUV < 881): indexUV = 7
+    elif (881 <= dataSensorUV) & (dataSensorUV < 976): indexUV = 8
+    elif (976 <= dataSensorUV) & (dataSensorUV < 1079): indexUV = 9
+    elif (1079 <= dataSensorUV) & (dataSensorUV < 1170): indexUV = 10
+    else: indexUV = 11
+    return indexUV
+
+# Function to read UV sensor data
+def readSensorUV():
+    # Implement your UV sensor reading code here
+    pass
+
+# Function to save log
+def save_log():
+    # Implement your log saving code here
+    pass
+
+# Main loop to collect and send data
+while(True):
+    getSensorData()
+    tPayload = "field1=" + str(humLab)+ "&field2=" + str(tempExt)+ "&field3=" + str(tempLab)+ "&field4=" + str(presSL)+ "&field5=" + str(altLab) + "&field6=" + str(presAbs)+ "&field7=" + str(UV_mV) + "&field8=" + str(UV_index)
+    try:
+        publish.single(topic, payload=tPayload, hostname=mqttHost, port=tPort, tls=tTLS, transport=tTransport)
+        save_log()
+    except (KeyboardInterrupt):
+        break
+    except:
+        print ("[INFO] Failure in sending data")
+    time.sleep(60)
